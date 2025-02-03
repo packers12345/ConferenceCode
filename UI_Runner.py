@@ -1,7 +1,9 @@
+# UI_Runner.py
 import tkinter as tk
-from tkinter import ttk, messagebox, filedialog
+from tkinter import ttk, messagebox, filedialog, scrolledtext
 from requirements import example_system_requirements
 from system_designs import example_system_designs
+from verification_requirements import example_verification_requirements
 import api_integration
 
 class SystemModelApp:
@@ -14,6 +16,7 @@ class SystemModelApp:
         self.api_key = tk.StringVar()
         self.system_requirements = tk.StringVar()
         self.results = ""
+        self.verification_help = tk.BooleanVar(value=False)
 
         self.create_layout()
 
@@ -40,6 +43,13 @@ class SystemModelApp:
 
         ttk.Button(requirements_section, text="Submit Requirements", command=self.submit_requirements).pack(pady=2)
 
+        # Verification Help Section
+        verification_section = ttk.LabelFrame(main_container, text="Verification Help", padding="5")
+        verification_section.pack(fill='x', pady=(0, 10))
+
+        ttk.Label(verification_section, text="Would you like help with verification (Y/N)?").pack(pady=2)
+        ttk.Checkbutton(verification_section, variable=self.verification_help).pack(pady=2)
+
         # Run Analysis Button
         ttk.Button(main_container, text="Run Analysis", command=self.run_analysis).pack(pady=10)
 
@@ -61,8 +71,12 @@ class SystemModelApp:
 
     def run_analysis(self):
         try:
-            result = api_integration.generate_system_designs(self.system_requirements, example_system_requirements, example_system_designs)
-            self.results = result
+            if self.verification_help.get():
+                result = api_integration.generate_system_designs(self.system_requirements, example_system_requirements, example_system_designs)
+                verification_result = api_integration.create_verification_requirements_models(self.system_requirements, example_system_requirements, example_verification_requirements, example_system_designs)
+                self.results = result + "\n\n" + verification_result
+            else:
+                self.results = api_integration.generate_system_designs(self.system_requirements, example_system_requirements, example_system_designs)
             messagebox.showinfo("Success", "Analysis completed successfully")
         except Exception as e:
             messagebox.showerror("Error", f"Analysis failed: {str(e)}")
@@ -73,7 +87,8 @@ class SystemModelApp:
         results_window.title("Analysis Results")
         results_window.geometry("800x600")
 
-        results_text = tk.Text(results_window, width=100, height=30)
+        # Create a scrolled text widget
+        results_text = scrolledtext.ScrolledText(results_window, width=100, height=30, wrap=tk.WORD)
         results_text.pack(pady=10, fill='both', expand=True)
         results_text.insert(tk.END, self.results)
         results_text.config(state='disabled')
