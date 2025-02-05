@@ -21,7 +21,7 @@ def connect_to_db():
         conn = psycopg2.connect(
             dbname='DatabaseHume',
             user='postgres',
-            password='Bashok12!',
+            password='XXXXXXXXXXXX',
             host='localhost',
             port='5432'
         )
