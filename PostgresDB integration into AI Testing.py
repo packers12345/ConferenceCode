@@ -278,7 +278,7 @@ Ensure the output is self-contained and integrates all provided data.
 
 if __name__ == "__main__":
     
-    test_key = "AIzaSyDR1xfxu_89IzzLboUZ3i3U_R5xJUQZqEQ"
+    test_key = "X"
     if not initialize_api(test_key):
         print("Failed to initialize API. Exiting.")
     else:
