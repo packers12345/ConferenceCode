@@ -1,4 +1,3 @@
-# UI_Runner.py
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog, scrolledtext
 from requirements import example_system_requirements
@@ -17,6 +16,8 @@ class SystemModelApp:
         self.system_requirements = tk.StringVar()
         self.results = ""
         self.verification_help = tk.BooleanVar(value=False)
+        self.traceability_help = tk.BooleanVar(value=False)
+        self.verification_conditions = tk.BooleanVar(value=False)
 
         self.create_layout()
 
@@ -50,6 +51,20 @@ class SystemModelApp:
         ttk.Label(verification_section, text="Would you like help with verification (Y/N)?").pack(pady=2)
         ttk.Checkbutton(verification_section, variable=self.verification_help).pack(pady=2)
 
+        # Traceability Help Section
+        traceability_section = ttk.LabelFrame(main_container, text="Traceability Help", padding="5")
+        traceability_section.pack(fill='x', pady=(0, 10))
+
+        ttk.Label(traceability_section, text="Would you like traceability and proof (Y/N)?").pack(pady=2)
+        ttk.Checkbutton(traceability_section, variable=self.traceability_help).pack(pady=2)
+
+        # Verification Conditions Section
+        conditions_section = ttk.LabelFrame(main_container, text="Verification Conditions", padding="5")
+        conditions_section.pack(fill='x', pady=(0, 10))
+
+        ttk.Label(conditions_section, text="Would you like verification conditions (Y/N)?").pack(pady=2)
+        ttk.Checkbutton(conditions_section, variable=self.verification_conditions).pack(pady=2)
+
         # Run Analysis Button
         ttk.Button(main_container, text="Run Analysis", command=self.run_analysis).pack(pady=10)
 
@@ -71,12 +86,21 @@ class SystemModelApp:
 
     def run_analysis(self):
         try:
+            result = api_integration.generate_system_designs(self.system_requirements, example_system_requirements, example_system_designs)
+            self.results = result
+
             if self.verification_help.get():
-                result = api_integration.generate_system_designs(self.system_requirements, example_system_requirements, example_system_designs)
                 verification_result = api_integration.create_verification_requirements_models(self.system_requirements, example_system_requirements, example_verification_requirements, example_system_designs)
-                self.results = result + "\n\n" + verification_result
-            else:
-                self.results = api_integration.generate_system_designs(self.system_requirements, example_system_requirements, example_system_designs)
+                self.results += "\n\n" + verification_result
+
+            if self.traceability_help.get():
+                traceability_result = api_integration.get_traceability(self.system_requirements, example_system_requirements, example_system_designs)
+                self.results += "\n\n" + traceability_result
+
+            if self.verification_conditions.get():
+                conditions_result = api_integration.get_verification_conditions(self.system_requirements, example_system_requirements, example_verification_requirements, example_system_designs)
+                self.results += "\n\n" + conditions_result
+
             messagebox.showinfo("Success", "Analysis completed successfully")
         except Exception as e:
             messagebox.showerror("Error", f"Analysis failed: {str(e)}")
