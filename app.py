@@ -4,10 +4,10 @@ from io import BytesIO
 import api_integration  # Updated integration module with new PDF table extraction
 
 # Set your API key as an environment variable so the API integration module finds it
-os.environ["GOOGLE_API_KEY"] = "AIzaSyDR1xfxu_89IzzLboUZ3i3U_R5xJUQZqEQ"  # Replace with your actual API key
+os.environ["GOOGLE_API_KEY"] = "x"  # Replace with your actual API key
 
 app = Flask(__name__)
-app.secret_key = "VT202527"  # Replace with your own secret key
+app.secret_key = "x"  # Replace with your own secret key
 
 # Automatically load the PDF training data at startup
 pdf_path = "C:\\Users\\bharg\\Downloads\\Wach_PF_D_2023 (2).pdf"
