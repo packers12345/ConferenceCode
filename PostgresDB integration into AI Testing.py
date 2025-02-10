@@ -1,12 +1,19 @@
 import psycopg2
 import google.generativeai as genai
+import spacy
+import re
 from typing import Dict, List, Any
+import PyPDF2  # Import the PyPDF2 library
+from io import BytesIO
+
+# Load spaCy NLP model
+nlp = spacy.load("en_core_web_sm")
 
 def initialize_api(api_key: str) -> bool:
-    """
-    Initialize the Gemini generative AI with the given API key.
-    Return True if successful, or False otherwise.
-    """
+    """Initialize the Gemini API."""
+    if not api_key:
+        print("No API key provided.")
+        return False
     try:
         genai.configure(api_key=api_key)
         print(f"API initialized with key: {api_key}")
@@ -21,7 +28,7 @@ def connect_to_db():
         conn = psycopg2.connect(
             dbname='DatabaseHume',
             user='postgres',
-            password='XXXXXXXXXXXX',
+            password='Bashok12!',
             host='localhost',
             port='5432'
         )
@@ -89,7 +96,9 @@ def fetch_specific_table(table_name: str, limit: int = 5) -> List[Any]:
 
     try:
         cursor = conn.cursor()
-        # Safely quote the table name if needed, but for simplicity:
+        # For extra safety, use regex to validate the table name (alphanumeric and underscore)
+        if not re.match(r'^\w+$', table_name):
+            raise ValueError("Invalid table name format.")
         query = f"SELECT * FROM {table_name} LIMIT {limit};"
         cursor.execute(query)
         rows = cursor.fetchall()
@@ -101,75 +110,113 @@ def fetch_specific_table(table_name: str, limit: int = 5) -> List[Any]:
 
 def detect_table_name(user_text: str) -> str:
     """
-    A simple, naive approach to detect a table name mentioned in user_text.
-    E.g., if user_text contains 'table system_requirements', returns 'system_requirements'.
+    Use regex to detect a table name mentioned in user_text.
+    Example: if user_text contains 'table system_requirements', returns 'system_requirements'.
     """
-    words = user_text.lower().split()
-    if "table" in words:
-        idx = words.index("table")
-        if idx + 1 < len(words):
-            # Next word after "table" might be the table name
-            possible_name = words[idx + 1]
-            # Remove punctuation if needed
-            return possible_name.replace(",", "").replace(".", "")
+    pattern = re.compile(r'\btable\s+([a-zA-Z0-9_]+)', re.IGNORECASE)
+    match = pattern.search(user_text)
+    if match:
+        return match.group(1)
     return ""
+
+def enhance_user_requirements(user_text: str) -> str:
+    """
+    Process and enhance the free-form user input using NLP.
+    Extracts key phrases and entities to form a more precise prompt.
+    """
+    doc = nlp(user_text)
+    
+    # Extract noun chunks and named entities as key phrases
+    key_phrases = set(chunk.text.strip() for chunk in doc.noun_chunks)
+    key_phrases.update(ent.text.strip() for ent in doc.ents)
+    
+    enhanced_text = user_text.strip()
+    if key_phrases:
+        enhanced_text += "\nKey concepts: " + ", ".join(key_phrases)
+    
+    if len(user_text.split()) < 20:
+        enhanced_text += "\n[Note: The input is brief; more detail may yield a richer design.]"
+    
+    print("Enhanced User Requirements:")
+    print(enhanced_text)
+    return enhanced_text
+
+def extract_text_from_pdf(pdf_file: BytesIO) -> str:
+    """Extract text from the given PDF file."""
+    text = ""
+    try:
+        pdf_reader = PyPDF2.PdfReader(pdf_file)
+        for page_num in range(len(pdf_reader.pages)):
+            page = pdf_reader.pages[page_num]
+            text += page.extract_text()
+    except Exception as e:
+        print(f"Error reading PDF: {e}")
+    return text
 
 def generate_system_designs(
     user_requirements: str,
-    example_reqs: str,
-    example_designs: str
+    examples: Any = None,
+    pdf_data: BytesIO = None
 ) -> str:
-    """
-    Generate system designs using real database data
-    and the provided example requirements/designs.
-
-    Additionally, if the user mentions 'table <tablename>' in their requirements,
-    we'll fetch rows from that table and embed them in the prompt.
-    """
+    """Generate a concise system design document (500 words) incorporating provided data."""
+    
+    if not isinstance(examples, dict):
+        print("Warning: 'examples' parameter is not a dictionary. Using default examples.")
+        examples = {
+            "example_reqs": "Example system requirements: [Default structured requirements].",
+            "example_designs": "Example system designs: [Detailed design example]."
+        }
+    
     try:
-        # 1) Always fetch the overall table structure
-        table_structure = fetch_table_structure()
+        processed_requirements = enhance_user_requirements(user_requirements)
 
-        # 2) Check if user references a specific table in user_requirements
+        table_structure = fetch_table_structure()
         referenced_table = detect_table_name(user_requirements)
         table_data_string = ""
-
         if referenced_table:
-            # 3) If found, fetch up to 5 rows from that table
             rows = fetch_specific_table(referenced_table, limit=5)
             if rows:
-                # Format the rows for the prompt
-                table_data_string = f"Here are up to 5 rows from the '{referenced_table}' table:\n"
+                table_data_string = f"Sample rows from '{referenced_table}':\n"
                 for i, row in enumerate(rows, start=1):
                     table_data_string += f"Row {i}: {row}\n"
             else:
-                table_data_string = f"No rows found or unable to fetch from table '{referenced_table}'.\n"
+                table_data_string = f"No data found for table '{referenced_table}'.\n"
 
-        # 4) Build the final query text
+        if pdf_data:
+            pdf_text = extract_text_from_pdf(pdf_data)
+            processed_requirements += f"\nPDF data: {pdf_text}"
+        else:
+            print("No PDF data provided; skipping PDF extraction.")
+
+        # Build a concise prompt (roughly 500-1000 words)
         query_text = f"""
-        Based on the user's system requirements:
-        {user_requirements}
+User Requirements (enhanced):
+{processed_requirements}
 
-        Use the following example system requirements:
-        {example_reqs}
+Reference Requirements:
+{examples.get("example_reqs", "")}
 
-        And the following example system designs:
-        {example_designs}
+Reference Designs:
+{examples.get("example_designs", "")}
 
-        Also, use the following database structure as a reference:
-        {table_structure}
+Database Structure:
+{table_structure}
 
-        {table_data_string}
+{table_data_string}
 
-        Please provide:
-        1. Mathematical description of the system requirements.
-        2. Set of acceptable system designs with proof (referencing table data if relevant).
-        3. Set of unacceptable system designs with proof.
-        4. Recommendations for improvement.
-        5. A formal proof of homomorphism verifying the equivalence between the system requirements and the resulting system designs by comparing key properties.
+Generate a concise system design document (500 words) that includes:
+1. A mathematical description of the system requirements.
+2. Acceptable system designs with formal proofs (using key properties and homomorphism).
+3. Unacceptable designs with proofs outlining discrepancies.
+4. Recommendations for improvement.
+5. A formal proof of homomorphism demonstrating equivalence between requirements and designs.
+
+Ensure the document is self-contained and integrates the user input, database data, and PDF content if provided.
         """
 
-        model = genai.GenerativeModel("gemini-1.0-pro")
+        print("Final Query Text for System Designs:")
+        print(query_text)
+        model = genai.GenerativeModel("gemini-2.0-flash-exp")
         response = model.generate_content(query_text)
         return response.text.strip()
 
@@ -178,48 +225,60 @@ def generate_system_designs(
 
 def create_verification_requirements_models(
     system_requirements: str,
-    example_system_requirements: str,
-    example_verification_requirements: Dict[str, Dict[str, List[Dict[str, str]]]],
-    example_system_designs: Dict[str, Dict[str, List[Dict[str, str]]]]
+    examples: Any = None,
+    pdf_data: BytesIO = None
 ) -> str:
-    """
-    Generate verification requirements and models based on the given system requirements 
-    and example verification requirements.
-    """
+    """Generate a concise verification requirements document (500 words) integrating provided data."""
+    
+    if not isinstance(examples, dict):
+        print("Warning: 'examples' parameter is not a dictionary. Using default examples.")
+        examples = {
+            "example_system_reqs": "Example system requirements: [Structured requirements].",
+            "example_verif_reqs": {"verification": {"details": [{"example": "verification structure"}]}},
+            "example_designs": {"design": {"details": [{"example": "system design structure"}]}}
+        }
+    
     try:
+        processed_requirements = enhance_user_requirements(system_requirements)
+
+        if pdf_data:
+            pdf_text = extract_text_from_pdf(pdf_data)
+            processed_requirements += f"\nPDF data: {pdf_text}"
+        else:
+            print("No PDF data provided; skipping PDF extraction.")
+
         query_text = f"""
-        Generate verification requirements and models based on the given system requirements. 
-        The provided example system requirements, verification requirements, and system designs 
-        are for structure reference only. Do not use the example content directly.
+Enhanced System Requirements:
+{processed_requirements}
 
-        Example System Requirements (for structure reference only):
-        {example_system_requirements}
+Reference Requirements:
+{examples.get("example_system_reqs", "")}
 
-        Example Verification Requirements (for structure reference only):
-        {example_verification_requirements}
+Reference Verification Examples:
+{examples.get("example_verif_reqs", "")}
 
-        Example System Designs (for structure reference only):
-        {example_system_designs}
+Reference Designs:
+{examples.get("example_designs", "")}
 
-        System Requirements: {system_requirements}
+Generate a concise verification requirements document (500 words) that includes:
+1. Detailed verification problem spaces with proofs of morphism to the system requirements.
+2. Verification models with proofs indicating adherence to these problem spaces.
+3. A formal yes/no proof of homomorphism demonstrating equivalence between system designs and verification requirements.
 
-        Please provide:
-        1. Verification requirement problem spaces with proof of morphism to system requirements.
-        2. Verification models with proof of which verification requirement problem spaces they adhere to.
-        3. Proof of homomorphism to the various system designs (Y/N proof, not type or degree).
+Ensure the output is self-contained and integrates all provided data.
         """
 
-        model = genai.GenerativeModel("gemini-1.0-pro")
+        print("Final Query Text for Verification Requirements:")
+        print(query_text)
+        model = genai.GenerativeModel("gemini-2.0-flash-exp")
         response = model.generate_content(query_text)
         return response.text.strip()
     except Exception as e:
         return f"Error in generating verification requirements and models: {str(e)}"
 
-# --------------------- #
-#  MAIN FUNCTION BLOCK  #
-# --------------------- #
 if __name__ == "__main__":
-    test_key = "YOUR_API_KEY_HERE"
+    
+    test_key = "AIzaSyDR1xfxu_89IzzLboUZ3i3U_R5xJUQZqEQ"
     if not initialize_api(test_key):
         print("Failed to initialize API. Exiting.")
     else:
@@ -230,4 +289,37 @@ if __name__ == "__main__":
         structure = fetch_table_structure()
         print("Table Structure:")
         print(structure)
+
+        # Example usage with PDF:
+        user_input = ("I need a system design for a smart home energy management system that handles sensor data, "
+                      "optimizes energy usage, and allows remote control. Please consider the information provided in the attached document.")
+
+        # Example reference texts bundled into a dictionary for system design
+        examples_design = {
+            "example_reqs": "Example system requirements: [Structured requirements similar to those from the dissertation].",
+            "example_designs": "Example system designs: [Detailed design example]."
+        }
+
+        try:
+            with open("C:\\Users\\bharg\\Downloads\\Wach_PF_D_2023 (2).pdf", "rb") as pdf_file:
+                pdf_data = BytesIO(pdf_file.read())
+        except FileNotFoundError:
+            pdf_data = None
+            print("PDF file not found! Example will run without PDF data.")
+        
+        design_output = generate_system_designs(user_input, examples_design, pdf_data)
+        print("\nGenerated System Design Document:")
+        print(design_output)
+
+        examples_verif = {
+            "example_system_reqs": "Example system requirements: [Structured requirements based on the dissertation].",
+            "example_verif_reqs": {"verification": {"details": [{"example": "verification requirement structure"}]}},
+            "example_designs": {"design": {"details": [{"example": "system design structure"}]}}
+        }
+        verification_output = create_verification_requirements_models(user_input, examples_verif, pdf_data)
+        print("\nGenerated Verification Requirements and Models:")
+        print(verification_output)
+
+
+
 
