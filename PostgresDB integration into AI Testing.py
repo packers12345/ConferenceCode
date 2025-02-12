@@ -28,7 +28,7 @@ def connect_to_db():
     """Establish a connection to the PostgreSQL database."""
     try:
         conn = psycopg2.connect(
-            dbname='DatabaseHume',
+            dbname='XXXXXXXXXXXXX',
             user='postgres',
             password='XXXXXXXXXXXX',
             host='localhost',
