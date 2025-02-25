@@ -7,6 +7,10 @@ import PyPDF2  # Import the PyPDF2 library
 from io import BytesIO
 from graphviz import Digraph  # For image visualization
 
+'''
+Please make sure to input your API key in the main function for testing and ask me for any credentials for the MS DB.
+'''
+
 # Load spaCy NLP model
 nlp = spacy.load("en_core_web_sm")
 
@@ -28,11 +32,11 @@ def connect_to_db():
     try:
         conn = odbc.connect(
             "Driver={ODBC Driver 18 for SQL Server};"
-            "Server=57.151.97.31,1433;"
+            "Server= X;"
             "Database=HumeDatabaseMS;"
             "Uid=sa;"
-            "Pwd=HumeDBTheory;"
-            "TrustServerCertificate=yes;"
+            "Pwd=X;"
+            "TrustServerCertificate=XXXXX;"
             "Connection Timeout=300;"
         )
         return conn
@@ -408,7 +412,7 @@ def generate_morphism_graph(morphism_data: dict, output_format: str = 'png') -> 
     return dot
 
 if __name__ == "__main__":
-    test_key = "AIzaSyANC5TtyaWK7LS1ZiOOGIzZKX4rxHWrJaA"
+    test_key = "X"
     if not initialize_api(test_key):
         print("Failed to initialize API. Exiting.")
     else:
