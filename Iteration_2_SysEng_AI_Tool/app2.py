@@ -2,16 +2,16 @@ import os
 import base64
 from flask import Flask, render_template, request, jsonify, session
 from io import BytesIO
-import api_integration  # This module contains your integrated API, DB, and visualization functions
+import api_integration  # This module contains your integrated API, DB, and Graphormer-based visualization functions
 
 # Set your API key as an environment variable so that the integration module can access it.
-os.environ["GOOGLE_API_KEY"] = "X"  # Replace with your actual API key
+os.environ["GOOGLE_API_KEY"] = "XXX"  # Replace with your actual API key
 
 app = Flask(__name__)
-app.secret_key = "X"  # Replace with your own secret key
+app.secret_key = "XXXXX"  # Replace with your own secret key
 
 # Automatically load the PDF training data at startup.
-pdf_path = "C:\\Users\\bharg\\Downloads\\Wach_PF_D_2023_main.pdf"
+pdf_path = "C:\\Users\\XXXXXX\\Downloads\\Wach_PF_D_2023_main.pdf"
 try:
     with open(pdf_path, "rb") as f:
         pdf_data = BytesIO(f.read())
@@ -30,12 +30,12 @@ def index():
 @app.route("/combined", methods=["POST"])
 def combined():
     """
-    Combined endpoint that retrieves the following outputs from the integration module:
-      - System Design (with clearly labeled sections and LaTeX-formatted math),
-      - Verification Requirements (with tables formatted like tabulate and section headers),
-      - Traceability (with an ASCII table style for the matrix and clear labels),
-      - Verification Conditions (with math rendered in LaTeX and clear section labels),
-      - And the Morphism Visualization (generated via Graphviz on the server).
+    Combined endpoint that retrieves outputs from the integration module:
+      - System Design
+      - Verification Requirements
+      - Traceability
+      - Verification Conditions
+      - And the Morphism Visualization generated via Graphormer.
     """
     prompt = request.form.get("prompt", "").strip()
     if not prompt:
@@ -83,19 +83,25 @@ def combined():
     except Exception as e:
         verification_conditions_output = f"Error generating verification conditions: {str(e)}"
     
-    # Generate the morphism visualization.
+    # Generate the system visualization based on user input and generated outputs
     try:
-        morphism_data = api_integration.build_morphism_graph_data(prompt, pdf_data)
-        graph = api_integration.generate_morphism_graph(morphism_data)
-        # The generate_morphism_graph function saves the image as 'morphism_visualization.png'
-        image_path = "morphism_visualization.png"
-        with open(image_path, "rb") as image_file:
-            morphism_image = base64.b64encode(image_file.read()).decode("utf-8")
+        # Create graph data structure with user requirements
+        graph_data = {
+            'user_requirements': prompt,  # Pass the user's prompt as requirements
+            'nodes': [],  # The API will generate nodes internally
+            'edges': []   # The API will generate edges internally
+        }
+        
+        # Generate the visualization
+        morphism_image = api_integration.generate_graphormer_visualization(graph_data, pdf_data)
+        print("Length of visualization string:", len(morphism_image) if morphism_image else "None")
     except Exception as e:
         morphism_image = None
-        print(f"Error generating morphism visualization: {e}")
+        print(f"Error generating system visualization: {e}")
+        import traceback
+        traceback.print_exc()
 
-    # Update conversation history.
+    # Update conversation history
     conversation = session.get("conversation", [])
     conversation.append({"sender": "User", "text": prompt})
     combined_text = (
@@ -107,13 +113,13 @@ def combined():
     conversation.append({"sender": "Assistant", "text": combined_text})
     session["conversation"] = conversation
 
-    # Return all outputs as JSON, including the Base64-encoded image.
+    # Return the outputs including the system visualization
     return jsonify({
         "system_design": system_design_output,
         "verification_requirements": verification_output,
         "traceability": traceability_output,
         "verification_conditions": verification_conditions_output,
-        "morphism_visual": morphism_image
+        "system_visual": morphism_image
     })
 
 if __name__ == "__main__":
