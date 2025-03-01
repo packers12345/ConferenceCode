@@ -5,11 +5,14 @@ import re
 from typing import Dict, List, Any
 import PyPDF2  # Import the PyPDF2 library
 from io import BytesIO
-from graphviz import Digraph  # For image visualization
+import base64
 
-'''
-Please make sure to input your API key in the main function for testing and ask me for any credentials for the MS DB.
-'''
+# For Graphormer LLM integration and visualization (LLM model that visualizes connections through nodes)
+import numpy as np
+import torch
+from transformers import GraphormerConfig, GraphormerModel
+import matplotlib.pyplot as plt
+from sklearn.decomposition import PCA  # principal component analysis
 
 # Load spaCy NLP model
 nlp = spacy.load("en_core_web_sm")
@@ -32,11 +35,11 @@ def connect_to_db():
     try:
         conn = odbc.connect(
             "Driver={ODBC Driver 18 for SQL Server};"
-            "Server= X;"
+            "Server=XXXXX;"
             "Database=HumeDatabaseMS;"
-            "Uid=sa;"
-            "Pwd=X;"
-            "TrustServerCertificate=XXXXX;"
+            "Uid= XXXXX;"
+            "Pwd=XXXXX;"
+            "TrustServerCertificate=yes;"
             "Connection Timeout=300;"
         )
         return conn
@@ -49,18 +52,15 @@ def list_all_tables() -> List[str]:
     conn = connect_to_db()
     if not conn:
         return []
-
     try:
         cursor = conn.cursor()
         cursor.execute("SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = 'dbo';")
         tables = [row[0] for row in cursor.fetchall()]
         conn.close()
-
         if tables:
             print(f"Tables have been retrieved successfully: {tables}")
         else:
             print("No tables found in the 'dbo' schema.")
-
         return tables
     except Exception as e:
         print(f"Error fetching table list: {e}")
@@ -71,12 +71,10 @@ def fetch_table_structure() -> Dict[str, Dict[str, str]]:
     conn = connect_to_db()
     if not conn:
         return {}
-
     table_structure = {}
     try:
         cursor = conn.cursor()
         tables = list_all_tables()
-
         for table in tables:
             cursor.execute(f"""
                 SELECT COLUMN_NAME, DATA_TYPE
@@ -85,7 +83,6 @@ def fetch_table_structure() -> Dict[str, Dict[str, str]]:
             """)
             columns = cursor.fetchall()
             table_structure[table] = {col[0]: col[1] for col in columns}
-
         conn.close()
         return table_structure
     except Exception as e:
@@ -100,7 +97,6 @@ def fetch_specific_table(table_name: str, limit: int = 5) -> List[Any]:
     conn = connect_to_db()
     if not conn:
         return []
-
     try:
         cursor = conn.cursor()
         if not re.match(r'^\w+$', table_name):
@@ -153,11 +149,7 @@ def extract_text_from_pdf(pdf_file: BytesIO) -> str:
         print(f"Error reading PDF: {e}")
     return text
 
-def generate_system_designs(
-    user_requirements: str,
-    examples: Any = None,
-    pdf_data: BytesIO = None
-) -> str:
+def generate_system_designs(user_requirements: str, examples: Any = None, pdf_data: BytesIO = None) -> str:
     """Generate a concise system design document (500 words) incorporating provided data."""
     if not isinstance(examples, dict):
         print("Warning: 'examples' parameter is not a dictionary. Using default examples.")
@@ -199,7 +191,7 @@ Database Structure:
 {table_data_string}
 
 Generate a concise system design document (500 words) that includes:
-1. A mathematical description of the system requirements (use LaTeX for any math equations, e.g. $$E=mc^2$$, have the tables as normal).
+1. A mathematical description of the system requirements (use LaTeX for any math equations, e.g. $$E=mc^2$$, and include tables as regular HTML).
 2. Acceptable system designs with formal proofs (using key properties and homomorphism).
 3. Unacceptable designs with proofs outlining discrepancies.
 4. Recommendations for improvement.
@@ -208,7 +200,7 @@ Generate a concise system design document (500 words) that includes:
 IMPORTANT:
 - Do NOT use any generic or fallback examples unless specified.
 - Clearly label each section with appropriate headings.
-- Ensure any DEFINED mathematical expressions are formatted in LaTeX.
+- Ensure any defined mathematical expressions are formatted in LaTeX.
 - Keep the response self-contained and data-driven.
         """
         print("Final Query Text for System Designs:")
@@ -219,11 +211,7 @@ IMPORTANT:
     except Exception as e:
         return f"Error in generating system designs: {str(e)}"
 
-def create_verification_requirements_models(
-    system_requirements: str,
-    examples: Any = None,
-    pdf_data: BytesIO = None
-) -> str:
+def create_verification_requirements_models(system_requirements: str, examples: Any = None, pdf_data: BytesIO = None) -> str:
     """Generate a concise verification requirements document (500 words) integrating provided data."""
     if not isinstance(examples, dict):
         print("Warning: 'examples' parameter is not a dictionary. Using default examples.")
@@ -260,7 +248,7 @@ Generate a concise verification requirements document (500 words) that includes:
 IMPORTANT:
 - Do NOT use any generic or fallback examples unless specified.
 - Clearly label every section (for example, 'Verification Problem Spaces', 'Verification Models', etc.).
-- Format any DEFINED mathematical expressions correctly. 
+- Format any defined mathematical expressions correctly.
 - Keep the response self-contained and data-driven.
         """
         print("Final Query Text for Verification Requirements:")
@@ -271,11 +259,8 @@ IMPORTANT:
     except Exception as e:
         return f"Error in generating verification requirements and models: {str(e)}"
 
-def get_traceability(
-    system_requirements: str,
-    example_system_requirements: str,
-    example_system_designs: Dict[str, Dict[str, List[Dict[str, str]]]]
-) -> str:
+def get_traceability(system_requirements: str, example_system_requirements: str,
+                      example_system_designs: Dict[str, Dict[str, List[Dict[str, str]]]]) -> str:
     """Generate traceability and proof based on the given system requirements and example system designs in 500 words."""
     try:
         query_text = f"""
@@ -290,12 +275,12 @@ Example System Designs (for structure reference only):
 System Requirements: {system_requirements}
 
 Please provide your answer in clearly labeled sections. Include:
-1. A traceability matrix that is formatted in a clean table (no dashes or spaces or blank rows), with the system requirements on one axis and the system designs on the other.
-2. A proof of traceability explanation that follows the martix table under it.
+1. A traceability matrix formatted as a clean HTML table (with bold headers and no extraneous rows).
+2. A short, spaced proof of traceability explanation that follows the table.
 
 IMPORTANT:
 - Do NOT use any generic or fallback examples unless specified.
-- Format any DEFINED mathematical expressions in LaTeX (enclose equations in Latex).
+- Format any defined mathematical expressions in LaTeX.
 - Clearly label each section with headers (e.g., "Traceability Matrix", "Proof of Traceability").
 - Ensure the table is neatly formatted, accounting for missing data.
         """
@@ -305,12 +290,9 @@ IMPORTANT:
     except Exception as e:
         return f"Error in generating traceability: {str(e)}"
 
-def get_verification_conditions(
-    system_requirements: str,
-    example_system_requirements: str,
-    example_verification_requirements: Dict[str, Dict[str, List[Dict[str, str]]]],
-    example_system_designs: Dict[str, Dict[str, List[Dict[str, str]]]]
-) -> str:
+def get_verification_conditions(system_requirements: str, example_system_requirements: str,
+                                example_verification_requirements: Dict[str, Dict[str, List[Dict[str, str]]]],
+                                example_system_designs: Dict[str, Dict[str, List[Dict[str, str]]]]) -> str:
     """Generate verification conditions based on the given system requirements and example verification requirements in 500 words."""
     try:
         query_text = f"""
@@ -334,7 +316,7 @@ Please provide your answer in clearly labeled sections. Include:
 
 IMPORTANT:
 - Do NOT use any generic or fallback examples unless specified.
-- Format any DEFINED mathematical expressions in LaTeX if needed.
+- Format any defined mathematical expressions in LaTeX if needed.
 - Clearly label each section with headers.
 - Keep the response self-contained and data-driven.
         """
@@ -344,72 +326,228 @@ IMPORTANT:
     except Exception as e:
         return f"Error in generating verification conditions: {str(e)}"
 
-# New function: Build morphism graph data using actual database and PDF content.
-def build_morphism_graph_data(user_requirements: str, pdf_data: BytesIO = None) -> dict:
+def generate_graphormer_visualization(graph_data, pdf_data=None):
     """
-    Build a dictionary for graph visualization from actual data.
-    - Extracts key concepts from the user requirements.
-    - Uses database table structure to add database-related nodes.
-    - Adds a PDF node if PDF data is provided.
-    - Adds nodes for system designs, verification requirements, and models.
+    Generates a detailed system-specific graph visualization showing relationships
+    between requirements, constraints, verification models and traceability.
+    Adaptable to different system types based on user requirements.
     """
-    nodes = []
-    edges = []
+    try:
+        # Extract requirements and perform deeper analysis
+        user_reqs = graph_data.get('user_requirements', '')
+        doc = nlp(user_reqs)
+        
+        # Detect system type from user requirements
+        system_type = "Generic System"  # Default system type
+        system_id = "SYS"  # Default system ID
+        
+        # Detect system types based on keywords
+        system_keywords = {
+            "autonomous vehicle": ("Autonomous Vehicle", "AV"),
+            "self-driving": ("Autonomous Vehicle", "AV"),
+            "smart home": ("Smart Home System", "SHS"),
+            "energy management": ("Energy Management System", "EMS"),
+            "healthcare": ("Healthcare System", "HCS"),
+            "medical": ("Medical System", "MED"),
+            "finance": ("Financial System", "FIN"),
+            "banking": ("Banking System", "BNK"),
+            "security": ("Security System", "SEC"),
+            "manufacturing": ("Manufacturing System", "MFG"),
+            "education": ("Education System", "EDU"),
+            "retail": ("Retail System", "RET"),
+            "transportation": ("Transportation System", "TRN"),
+            "logistics": ("Logistics System", "LOG"),
+            "communication": ("Communication System", "COM"),
+            "network": ("Network System", "NET"),
+            "data": ("Data Management System", "DMS"),
+            "cloud": ("Cloud System", "CLD"),
+            "iot": ("IoT System", "IOT"),
+            "robot": ("Robotic System", "ROB")
+        }
+        
+        for keyword, (name, id_code) in system_keywords.items():
+            if keyword in user_reqs.lower():
+                system_type = name
+                system_id = id_code
+                break
+        
+        # Extract technical specifications and requirements
+        specs = {
+            'performance': [],
+            'stability': [], 
+            'safety': [],
+            'verification': []
+        }
+        
+        # Parse user input for specific requirements
+        for sent in doc.sents:
+            text = sent.text.lower()
+            if any(term in text for term in ['speed', 'acceleration', 'time', 'performance', 'efficiency', 'throughput', 'response']):
+                specs['performance'].append(sent.text)
+            if any(term in text for term in ['balance', 'stability', 'control', 'reliability', 'robustness', 'consistent']):
+                specs['stability'].append(sent.text)
+            if any(term in text for term in ['safe', 'emergency', 'protect', 'security', 'privacy', 'backup']):
+                specs['safety'].append(sent.text)
+            if any(term in text for term in ['verify', 'validate', 'test', 'simulation', 'check', 'audit', 'monitor']):
+                specs['verification'].append(sent.text)
 
-    # Node for User Requirements
-    enhanced_req = enhance_user_requirements(user_requirements)
-    nodes.append({"id": "SR", "label": "User Requirements"})
+        # Define system-specific components with detailed relationships
+        nodes = [
+            # Core System Layer
+            {"id": system_id, "label": system_type, "type": "core", "group": 0},
+            
+            # Requirements Layer  
+            {"id": "SR", "label": f"{system_id} System Requirements", "type": "req", "group": 1},
+            {"id": "FR", "label": f"{system_id} Functional Requirements", "type": "req", "group": 1},
+            {"id": "NFR", "label": f"{system_id} Non-Functional Requirements", "type": "req", "group": 1},
+            
+            # Constraints Layer
+            {"id": "SC", "label": f"{system_id} Stability Constraints", "type": "constraint", "group": 2},
+            {"id": "PC", "label": f"{system_id} Performance Constraints", "type": "constraint", "group": 2},
+            {"id": "SAF", "label": f"{system_id} Safety Constraints", "type": "constraint", "group": 2},
+            
+            # Verification Layer
+            {"id": "VM", "label": f"{system_id} Mathematical Model", "type": "verify", "group": 3},
+            {"id": "TR", "label": f"{system_id} Traceability Matrix", "type": "verify", "group": 3},
+            {"id": "VC", "label": f"{system_id} Verification Conditions", "type": "verify", "group": 3}
+        ]
 
-    # Build database-related nodes
-    table_structure = fetch_table_structure()
-    if table_structure:
-        nodes.append({"id": "DB", "label": "Database Tables"})
-        for table in table_structure:
-            table_node_id = f"DB_{table}"
-            nodes.append({"id": table_node_id, "label": table})
-            edges.append({"from": "DB", "to": table_node_id, "label": "contains"})
-            if table.lower() in user_requirements.lower():
-                edges.append({"from": "SR", "to": table_node_id, "label": "references"})
-    
-    # Add a PDF node if pdf_data is provided
-    if pdf_data:
-        pdf_text = extract_text_from_pdf(pdf_data)
-        nodes.append({"id": "PDF", "label": "PDF Document"})
-        edges.append({"from": "SR", "to": "PDF", "label": "details in"})
+        # Add specific requirement nodes based on extracted specs
+        for category, items in specs.items():
+            for i, spec in enumerate(items):
+                nodes.append({
+                    "id": f"{category[:3]}_{i}",
+                    "label": spec[:30] + "..." if len(spec) > 30 else spec,
+                    "type": "spec",
+                    "group": 4
+                })
 
-    # Add nodes for system design and verification artifacts
-    nodes.extend([
-        {"id": "SD", "label": "System Designs"},
-        {"id": "VR", "label": "Verification Requirements"},
-        {"id": "VM", "label": "Verification Models"}
-    ])
+        # Define logical connections showing requirement flow
+        edges = [
+            # Core system connections
+            {"from": system_id, "to": "SR", "label": "defines"},
+            {"from": "SR", "to": "FR", "label": "includes"},
+            {"from": "SR", "to": "NFR", "label": "includes"},
+            
+            # Constraint relationships
+            {"from": "FR", "to": "SC", "label": "imposes"},
+            {"from": "FR", "to": "PC", "label": "imposes"},
+            {"from": "FR", "to": "SAF", "label": "imposes"},
+            
+            # Verification relationships
+            {"from": "SC", "to": "VM", "label": "validates"},
+            {"from": "PC", "to": "VM", "label": "validates"},
+            {"from": "SAF", "to": "VM", "label": "validates"},
+            
+            # Traceability connections
+            {"from": "VM", "to": "TR", "label": "generates"},
+            {"from": "TR", "to": "VC", "label": "defines"}
+        ]
 
-    # Add edges representing the morphism relationships
-    edges.extend([
-        {"from": "SR", "to": "SD", "label": "design mapping"},
-        {"from": "SD", "to": "VM", "label": "verification mapping"},
-        {"from": "SR", "to": "VR", "label": "verification derivation"},
-        {"from": "VR", "to": "VM", "label": "morphism proof"}
-    ])
+        # Connect specifications to their respective categories
+        for node in nodes:
+            if node["type"] == "spec":
+                category = node["id"][:3]
+                if category == "per":  # Performance
+                    edges.append({"from": "PC", "to": node["id"], "label": "specifies"})
+                elif category == "sta":  # Stability
+                    edges.append({"from": "SC", "to": node["id"], "label": "specifies"})
+                elif category == "saf":  # Safety
+                    edges.append({"from": "SAF", "to": node["id"], "label": "specifies"})
+                elif category == "ver":  # Verification
+                    edges.append({"from": "VM", "to": node["id"], "label": "implements"})
 
-    return {"nodes": nodes, "edges": edges}
+        # Create visualization
+        plt.figure(figsize=(12, 8))
+        
+        # Layout nodes in layers with improved spacing
+        layers = {0: 0.9, 1: 0.7, 2: 0.5, 3: 0.3, 4: 0.1}  # y-coordinates for each layer
+        pos_x = []
+        pos_y = []
+        
+        for node in nodes:
+            group = node["group"]
+            layer_nodes = sum(1 for n in nodes if n["group"] == group)
+            node_index = sum(1 for n in nodes[:nodes.index(node)] if n["group"] == group)
+            
+            # Calculate position within layer
+            x = 0.1 + (node_index + 1) * (0.8 / (layer_nodes + 1))
+            y = layers[group]
+            
+            pos_x.append(x)
+            pos_y.append(y)
 
-# New function: Generate an image visualization of morphisms using Graphviz.
-def generate_morphism_graph(morphism_data: dict, output_format: str = 'png') -> Digraph:
-    """
-    Generates a visualization for morphisms using Graphviz.
-    `morphism_data` should be a dictionary with keys "nodes" and "edges".
-    """
-    dot = Digraph(comment='Morphism Visualization')
-    
-    for node in morphism_data.get("nodes", []):
-        dot.node(node['id'], node.get('label', node['id']))
-    
-    for edge in morphism_data.get("edges", []):
-        dot.edge(edge['from'], edge['to'], label=edge.get('label', ''))
-    
-    dot.render('morphism_visualization', format=output_format, cleanup=True)
-    return dot
+        # Choose color scheme based on system type
+        color_schemes = {
+            "AV": {  # Autonomous Vehicle
+                'core': '#F08080',    # Light Coral
+                'req': '#90EE90',     # Light Green
+                'constraint': '#87CEFA',  # Light Sky Blue
+                'verify': '#FFD700',   # Gold
+                'spec': '#DDA0DD'      # Plum
+            },
+            "SHS": {  # Smart Home System
+                'core': '#20B2AA',    # Light Sea Green
+                'req': '#FFB6C1',     # Light Pink
+                'constraint': '#B0C4DE',  # Light Steel Blue
+                'verify': '#F0E68C',   # Khaki
+                'spec': '#D8BFD8'      # Thistle
+            },
+            "EMS": {  # Energy Management System
+                'core': '#3CB371',    # Medium Sea Green
+                'req': '#FFDAB9',     # Peach Puff
+                'constraint': '#ADD8E6',  # Light Blue
+                'verify': '#FFFACD',   # Lemon Chiffon
+                'spec': '#E6E6FA'      # Lavender
+            },
+            # Default color scheme
+            "default": {
+                'core': '#FF9999',    # Red shade
+                'req': '#99FF99',     # Green shade
+                'constraint': '#9999FF',  # Blue shade
+                'verify': '#FFFF99',   # Yellow shade
+                'spec': '#FF99FF'      # Purple shade
+            }
+        }
+        
+        # Select color scheme based on system ID, fallback to default
+        colors = color_schemes.get(system_id, color_schemes["default"])
+
+        # Draw nodes
+        for i, node in enumerate(nodes):
+            plt.scatter(pos_x[i], pos_y[i], c=colors[node["type"]], s=100, alpha=0.8, edgecolor='black')
+            plt.text(pos_x[i], pos_y[i], node["label"], 
+                    fontsize=7, ha='center', va='bottom', wrap=True)
+
+        # Draw edges with arrows
+        for edge in edges:
+            i = next(i for i, n in enumerate(nodes) if n["id"] == edge["from"])
+            j = next(i for i, n in enumerate(nodes) if n["id"] == edge["to"])
+            
+            # Draw arrow with improved visibility
+            plt.annotate("",
+                        xy=(pos_x[j], pos_y[j]),
+                        xytext=(pos_x[i], pos_y[i]),
+                        arrowprops=dict(arrowstyle="->", color="gray", alpha=0.6, lw=1.5))
+            
+            # Add edge label
+            mid_x = (pos_x[i] + pos_x[j]) / 2
+            mid_y = (pos_y[i] + pos_y[j]) / 2
+            plt.text(mid_x, mid_y, edge["label"], fontsize=6, ha='center', va='center', 
+                    bbox=dict(facecolor='white', alpha=0.7, edgecolor='none', pad=1))
+
+        plt.title(f"{system_type} Architecture and Requirements Flow", fontsize=14)
+        plt.axis('off')
+        
+        # Convert to Base64
+        buf = BytesIO()
+        plt.savefig(buf, format='png', bbox_inches='tight', dpi=300)
+        plt.close()
+        buf.seek(0)
+        return base64.b64encode(buf.read()).decode('utf-8')
+    except Exception as e:
+        print(f"Error in visualization: {e}")
+        return None
 
 if __name__ == "__main__":
     test_key = "X"
@@ -418,32 +556,36 @@ if __name__ == "__main__":
     else:
         tables = list_all_tables()
         print(f"Tables returned: {tables}")
-
         structure = fetch_table_structure()
         print("Table Structure:")
         print(structure)
-
+        
         user_input = (
             "I need a system design for a smart home energy management system that handles sensor data, "
             "optimizes energy usage, and allows remote control. Please consider the information provided in the attached document."
         )
-
+        # For demonstration, add the user requirements into the morphism_data so the graph node can display it.
+        morphism_data = {
+            "user_requirements": user_input,
+            "nodes": [{"id": "SR", "label": "User Requirements"}, {"id": "DB", "label": "Database Tables"}],
+            "edges": [{"from": "SR", "to": "DB", "label": "references"}]
+        }
+        
         examples_design = {
             "example_reqs": "Example system requirements: [Structured requirements similar to those from the dissertation].",
             "example_designs": "Example system designs: [Detailed design example]."
         }
-
         try:
             with open("C:\\Users\\bharg\\Downloads\\Wach_PF_D_2023_main.pdf", "rb") as pdf_file:
                 pdf_data = BytesIO(pdf_file.read())
         except FileNotFoundError:
             pdf_data = None
             print("PDF file not found! Example will run without PDF data.")
-
+        
         design_output = generate_system_designs(user_input, examples_design, pdf_data)
         print("\nGenerated System Design Document:")
         print(design_output)
-
+        
         examples_verif = {
             "example_system_reqs": "Example system requirements: [Structured requirements based on the dissertation].",
             "example_verif_reqs": {"verification": {"details": [{"example": "verification requirement structure"}]}},
@@ -452,13 +594,13 @@ if __name__ == "__main__":
         verification_output = create_verification_requirements_models(user_input, examples_verif, pdf_data)
         print("\nGenerated Verification Requirements and Models:")
         print(verification_output)
-
+        
         example_system_requirements = "Example system requirements: [Structured requirements for traceability]."
         example_system_designs = {"design": {"details": [{"example": "system design structure for traceability"}]}}
         traceability_output = get_traceability(user_input, example_system_requirements, example_system_designs)
         print("\nGenerated Traceability and Proof:")
         print(traceability_output)
-
+        
         example_verification_requirements = {
             "verification": {"details": [{"example": "verification requirement structure for conditions"}]}
         }
@@ -471,7 +613,8 @@ if __name__ == "__main__":
         print("\nGenerated Verification Conditions:")
         print(verification_conditions_output)
         
-        morphism_data = build_morphism_graph_data(user_input, pdf_data)
-        graph = generate_morphism_graph(morphism_data)
-        print("\nGenerated Morphism Visualization Graph DOT Source:")
-        print(graph.source)
+        # Generate Graphormer-based visualization using the updated morphism_data.
+        graph_image_b64 = generate_graphormer_visualization(morphism_data, pdf_data)
+        print("\nGenerated Graphormer-based Visualization (Base64):")
+        print(graph_image_b64)
+
