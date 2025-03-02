@@ -557,7 +557,7 @@ def generate_graphormer_visualization(graph_data, pdf_data=None):
         return None
 
 if __name__ == "__main__":
-    test_key = "AIzaSyANC5TtyaWK7LS1ZiOOGIzZKX4rxHWrJaA"
+    test_key = "XXXXXXXXXXXXXXXXXXXXX"
     if not initialize_api(test_key):
         print("Failed to initialize API. Exiting.")
     else:
