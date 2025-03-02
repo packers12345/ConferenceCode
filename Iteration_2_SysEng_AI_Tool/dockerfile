@@ -1,0 +1,55 @@
+# Use Python 3.10 as base image
+FROM python:3.10-slim
+
+# Set working directory
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    build-essential \
+    unixodbc-dev \
+    g++ \
+    curl \
+    gnupg2 \
+    git \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install ODBC driver for SQL Server
+RUN curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o /usr/share/keyrings/microsoft-archive-keyring.gpg && \
+    echo "deb [arch=amd64,arm64,armhf signed-by=/usr/share/keyrings/microsoft-archive-keyring.gpg] https://packages.microsoft.com/debian/12/prod bookworm main" > /etc/apt/sources.list.d/microsoft-prod.list && \
+    apt-get update && \
+    ACCEPT_EULA=Y apt-get install -y msodbcsql18 unixodbc-dev && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+# Copy requirements first to leverage Docker cache
+COPY requirements.txt .
+
+# Install Python dependencies in stages to better handle failures
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu && \
+    pip install --no-cache-dir transformers==4.40.2 && \
+    pip install --no-cache-dir -r requirements.txt
+
+# Copy application code
+COPY app.py .
+COPY api_integration.py .
+COPY templates/ templates/
+# Create directories first
+RUN mkdir -p /app/pdfs /app/templates
+
+# Download PDF directly in the container
+RUN curl -L "https://raw.githubusercontent.com/yourusername/yourrepo/main/Wach_PF_D_2023_main.pdf" -o /app/pdfs/Wach_PF_D_2023_main.pdf
+
+# Environment variable for PDF path
+ENV PDF_PATH=/app/pdfs/Wach_PF_D_2023_main.pdf
+ENV GOOGLE_API_KEY=""
+
+
+# Expose port for Flask application
+EXPOSE 5000
+
+# Command to run the application
+CMD ["python", "app.py"]
