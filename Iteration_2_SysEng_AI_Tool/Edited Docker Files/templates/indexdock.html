@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>System Design & Verification Requirements Outline Assistant</title>
+  <!-- Bootstrap CSS -->
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- MathJax for LaTeX rendering -->
+  <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+  <script id="MathJax-script" async
+          src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: "Segoe UI", sans-serif;
+      background-color: #f8f9fa;
+    }
+    /* Hero Section */
+    .hero-section {
+      min-height: 60vh;
+      background: linear-gradient(45deg, #FFA500, #FF7F50, #FFD700);
+      background-size: 600% 600%;
+      color: #fff;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 40px 20px;
+    }
+    .hero-section h1 {
+      font-size: 3rem;
+      text-shadow: 2px 2px 5px rgba(0,0,0,0.3);
+      margin-bottom: 20px;
+    }
+    .hero-section p {
+      font-size: 1.2rem;
+      margin-bottom: 30px;
+    }
+    /* Launch Chat Button */
+    .launch-btn {
+      background-color: #630031;
+      color: #fff;
+      border: none;
+      padding: 15px 30px;
+      font-size: 1.1rem;
+      border-radius: 50px;
+      cursor: pointer;
+      transition: background-color 0.3s, transform 0.3s, box-shadow 0.3s;
+    }
+    .launch-btn:hover {
+      background-color: #FF4500;
+      transform: scale(1.1);
+      box-shadow: 0px 0px 20px rgba(255,69,0,0.6);
+    }
+    /* Info Section */
+    #info-section {
+      padding: 40px 20px;
+      background-color: #fff;
+      max-width: 800px;
+      margin: 0 auto;
+      text-align: left;
+    }
+    #info-section h2 {
+      margin-top: 20px;
+      color: #FF7F50;
+    }
+    #info-section p {
+      margin-bottom: 15px;
+      line-height: 1.5;
+      color: #333;
+    }
+    /* Chat Screen */
+    #chat-screen {
+      padding: 20px;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+    .outline-box {
+      background-color: #fff;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      padding: 15px;
+      min-height: 350px;
+      overflow-y: auto;
+      font-size: 14px;
+      color: #333;
+      margin-bottom: 10px;
+      box-shadow: 0px 4px 6px rgba(0,0,0,0.1);
+    }
+    /* Section Headers & Content */
+    .section-header {
+      font-size: 1.3rem;
+      font-weight: bold;
+      color: #630031;
+      margin-top: 20px;
+      margin-bottom: 10px;
+    }
+    .section-content {
+      margin-bottom: 20px;
+    }
+    .section-content p {
+      margin-bottom: 20px;
+      line-height: 1.6;
+    }
+    /* Excel-like Table Styles */
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin-top: 20px;
+      margin-bottom: 20px;
+    }
+    th, td {
+      border: 2px solid #630031;
+      padding: 8px;
+      text-align: left;
+    }
+    th {
+      background-color: #FF7F50;
+      color: #fff;
+      font-weight: bold;
+    }
+    /* Input Area */
+    .input-area textarea {
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      padding: 10px;
+      width: 100%;
+      height: 150px;
+      resize: vertical;
+      font-size: 1rem;
+      transition: border-color 0.3s ease;
+    }
+    .input-area textarea:focus {
+      border-color: #FF7F50;
+      outline: none;
+      box-shadow: 0 0 5px rgba(255,127,80,0.5);
+    }
+    .input-area button {
+      background-color: #FF7F50;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      padding: 10px 30px;
+      transition: background-color 0.3s, transform 0.2s;
+    }
+    .input-area button:hover {
+      background-color: #FF4500;
+      transform: scale(1.05);
+    }
+    /* Author Section */
+    .author-section {
+      text-align: center;
+      margin: 20px auto;
+      color: #FF7F50;
+      font-weight: bold;
+      font-size: 14pt;
+    }
+  </style>
+</head>
+<body>
+  <!-- Hero Section -->
+  <div class="hero-section">
+    <h1>System Design & Verification Requirements Outline Assistant</h1>
+    <p>Explore cutting-edge system design insights and verification strategies with our interactive assistant.</p>
+    <button class="launch-btn" id="enter-chat-btn">
+      <i class="fas fa-rocket"></i> Launch Chat
+    </button>
+  </div>
+
+  <!-- Info Section -->
+  <div id="info-section">
+    <h2>What is Systems Engineering?</h2>
+    <p>
+      Systems Engineering is an interdisciplinary field that focuses on designing, integrating, and managing
+      complex systems over their life cycles. It involves understanding stakeholder needs, defining requirements,
+      and ensuring that all system components work together seamlessly.
+    </p>
+    <h2>Requirements & Verification</h2>
+    <p>
+      Requirements define what the system must do and the conditions it must meet.
+      Verification ensures that the system satisfies these requirements—through simulations, tests,
+      inspections, or analyses.
+    </p>
+    <h2>What Does This AI Bot Aim to Do?</h2>
+    <p>
+      This AI chatbot helps you outline system design requirements, plan verification activities, and maintain
+      traceability between design and verification. It provides a structured approach for capturing your system’s
+      architecture and verifying its performance.
+    </p>
+  </div>
+
+  <!-- Chat Screen -->
+  <div id="chat-screen">
+    <div class="container">
+      <h2 class="text-center my-4">Chat Output</h2>
+      <div class="outline-box" id="combined-output">
+        <!-- Combined output will appear here -->
+        {% for msg in conversation if msg.sender == "Assistant" %}
+          <div>{{ msg.text|safe }}</div>
+          {% if not loop.last %}<hr>{% endif %}
+        {% endfor %}
+      </div>
+      <!-- Input Area -->
+      <div class="input-area">
+        <textarea id="combined-prompt" placeholder="Enter your prompt for system design and verification..."></textarea>
+        <button id="combined-send-btn"><i class="fas fa-paper-plane"></i> Send</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Author Section -->
+  <div class="author-section">
+    Created by the Systems Theory Team @ The Virginia Tech Hume Center<br>
+    Adithya Iyer, Cameron Curran, Bhavya Shanmugam, Bhargav Ashok<br><br>
+    Supervisor: Dr. Paul Wach<br><br>
+    <em>Ut Prosim, That I may serve</em>
+  </div>
+
+  <!-- jQuery & Bootstrap JS -->
+  <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+  <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+  <script>
+    // Helper function to format text into paragraphs
+    function formatText(text) {
+      if (!text) return "";
+      const paragraphs = text.split(/\n\s*\n/);
+      return paragraphs.map(p => `<p>${p.trim()}</p>`).join("");
+    }
+
+    // Smooth scroll to chat screen
+    $("#enter-chat-btn").click(function() {
+      $("html, body").animate({ scrollTop: $("#chat-screen").offset().top }, 1000);
+    });
+
+    // Chat send button functionality
+$("#combined-send-btn").click(function() {
+  const prompt = $("#combined-prompt").val().trim();
+  if (!prompt) return;
+
+  // Append user's message
+  $("#combined-output").append("<strong>User:</strong><br>" + formatText(prompt));
+  // Show a loading message
+  const loadingMsg = "<strong>Assistant:</strong> <em>Loading...</em><br><br>";
+  $("#combined-output").append(loadingMsg);
+  // Clear input
+  $("#combined-prompt").val("");
+
+  // AJAX POST to /combined
+  $.post("/combined", { prompt: prompt }, function(data) {
+  let textOutputHTML = "";
+  textOutputHTML += "<h3 class='section-header'>System Design</h3>";
+  textOutputHTML += "<div class='section-content'>" + formatText(data.system_design) + "</div>";
+  textOutputHTML += "<h3 class='section-header'>Verification Requirements</h3>";
+  textOutputHTML += "<div class='section-content'>" + formatText(data.verification_requirements) + "</div>";
+  textOutputHTML += "<h3 class='section-header'>Traceability</h3>";
+  textOutputHTML += "<div class='section-content'>" + (data.traceability || "") + "</div>";
+  textOutputHTML += "<h3 class='section-header'>Verification Conditions</h3>";
+  textOutputHTML += "<div class='section-content'>" + formatText(data.verification_conditions) + "</div>";
+  // Append Graph Visualization section
+  textOutputHTML += "<h3 class='section-header'>Graph Visualization</h3>";
+  if (data.system_visual) {
+    textOutputHTML += "<div class='section-content'><img src='data:image/png;base64," + data.system_visual + "' alt='Graph Visualization'></div>";
+  } else {
+    textOutputHTML += "<div class='section-content'><p>No graph visualization available.</p></div>";
+  }
+
+  // Update the combined output
+  $("#combined-output").html(textOutputHTML);
+  $("#combined-output").scrollTop($("#combined-output")[0].scrollHeight);
+
+  // Re-typeset LaTeX using MathJax
+  if (typeof MathJax !== 'undefined') {
+    MathJax.typesetPromise();
+  }
+  }).fail(function() {
+    $("#combined-output").append("<strong>Assistant:</strong> Error occurred while processing your request.<br><br>");
+  });
+});
+  </script>
+</body>
+</html>
