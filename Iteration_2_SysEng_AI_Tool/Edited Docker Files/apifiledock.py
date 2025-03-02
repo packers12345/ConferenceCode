@@ -35,10 +35,10 @@ def connect_to_db():
     """Establish a connection to the MS SQL Server database using ODBC with environment variables."""
     try:
         # Get database connection parameters from environment variables
-        db_server = os.environ.get("DB_SERVER", "57.151.97.31,1433")
+        db_server = os.environ.get("DB_SERVER", "XXX")
         db_name = os.environ.get("DB_NAME", "HumeDatabaseMS")
-        db_user = os.environ.get("DB_USER", "sa")
-        db_password = os.environ.get("DB_PASSWORD", "HumeDBTheory")
+        db_user = os.environ.get("DB_USER", "XXX")
+        db_password = os.environ.get("DB_PASSWORD", "XXXXX")
         
         conn = odbc.connect(
             "Driver={ODBC Driver 18 for SQL Server};"
