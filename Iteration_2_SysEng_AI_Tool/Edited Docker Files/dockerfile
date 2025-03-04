@@ -41,7 +41,7 @@ COPY templates/ templates/
 RUN mkdir -p /app/pdfs /app/templates
 
 # Download PDF directly in the container
-RUN curl -L "https://raw.githubusercontent.com/yourusername/yourrepo/main/Wach_PF_D_2023_main.pdf" -o /app/pdfs/Wach_PF_D_2023_main.pdf
+RUN curl -L "https://github.com/packers12345/ConferenceCode/blob/master/Iteration_2_SysEng_AI_Tool/pdfs/Wach_PF_D_2023_main.pdf" -o /app/pdfs/Wach_PF_D_2023_main.pdf
 
 # Environment variable for PDF path
 ENV PDF_PATH=/app/pdfs/Wach_PF_D_2023_main.pdf
