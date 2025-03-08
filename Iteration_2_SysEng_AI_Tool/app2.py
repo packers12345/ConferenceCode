@@ -4,14 +4,18 @@ from flask import Flask, render_template, request, jsonify, session
 from io import BytesIO
 import api_integration  # This module contains your integrated API, DB, and Graphormer-based visualization functions
 
-# Set your API key as an environment variable so that the integration module can access it.
-os.environ["GOOGLE_API_KEY"] = "XXX"  # Replace with your actual API key
+# Set your API key from environment variable
+api_key = os.environ.get("GOOGLE_API_KEY")
+if not api_key:
+    print("WARNING: GOOGLE_API_KEY environment variable not set!")
+else:
+    api_integration.initialize_api(api_key)
 
 app = Flask(__name__)
-app.secret_key = "XXXXX"  # Replace with your own secret key
+app.secret_key = os.environ.get("FLASK_SECRET_KEY", "VT202527")  # Get from environment or use default
 
-# Automatically load the PDF training data at startup.
-pdf_path = "C:\\Users\\XXXXXX\\Downloads\\Wach_PF_D_2023_main.pdf"
+# Load the PDF training data from environment variable path
+pdf_path = os.environ.get("PDF_PATH", "/Code_SysEngg_edited/pdfs/Wach_PF_D_2023_main.pdf")
 try:
     with open(pdf_path, "rb") as f:
         pdf_data = BytesIO(f.read())
@@ -22,10 +26,11 @@ except Exception as e:
 
 @app.route("/")
 def index():
-    # Initialize conversation history in session if not present.
-    session["conversation"] = []
-    # Pass an initial null morphism image to the template.
-    return render_template("index.html", conversation=session["conversation"], morphism_image=None)
+    # Initialize conversation history in session if not present
+    if "conversation" not in session:
+        session["conversation"] = []
+    # Pass an initial null morphism image to the template
+    return render_template("index.html", conversation=session.get("conversation", []), morphism_image=None)
 
 @app.route("/combined", methods=["POST"])
 def combined():
@@ -123,4 +128,7 @@ def combined():
     })
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    # Get port from environment variable for cloud deployment compatibility
+    port = int(os.environ.get("PORT", 5000))
+    # Set host to 0.0.0.0 to make it accessible outside container
+    app.run(host='0.0.0.0', port=port, debug=False)
