@@ -12,10 +12,10 @@ else:
     api_integration.initialize_api(api_key)
 
 app = Flask(__name__)
-app.secret_key = os.environ.get("FLASK_SECRET_KEY", "XXXX")  # Get from environment or use default
+app.secret_key = os.environ.get("FLASK_SECRET_KEY", "VT202527")  # Get from environment or use default
 
 # Load the PDF training data from environment variable path
-pdf_path = os.environ.get("PDF_PATH", "/app/pdfs/training_document.pdf")
+pdf_path = os.environ.get("PDF_PATH", "/Code_SysEngg_edited/pdfs/Wach_PF_D_2023_main.pdf")
 try:
     with open(pdf_path, "rb") as f:
         pdf_data = BytesIO(f.read())
